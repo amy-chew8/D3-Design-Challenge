@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<link rel="stylesheet" type="text/css" href="styles.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200&family=Nunito+Sans&family=Quicksand&family=Raleway&display=swap" rel="stylesheet">
+<!-- Load d3.js -->
+<script src="https://d3js.org/d3.v6.js"></script>
+<body>
+    <div id="title">
+        <h1>Average High & Low Temperatures and Precipitation</h1>
+        <div id="subtitle">
+
+        </div>
+    </div>
+<div class="flex-parent">
+<div class="flex-child input" id="user-input">
+    <!-- Initialize a drop down -->
+    <p>Select Type of Graph</p>
+    <select id="selectButton"></select>
+    <br>
+    <p id="city-select" style="display: none;">Select City</p>
+    <br>
+    <select id="selectButton-city" style="display: none;"></select>
+
+    <!-- Initialize check boxes  -->
+    <br>
+    <p id="option-prompt" style="display: none;"></p>
+    <br>
+    <input type="checkbox" class="checkbox" style="display: none;"> 
+    <text id="checkbox-label"></text>
+    <br>
+    <input type="checkbox" class="checkbox" style="display: none;"> 
+    <text id="checkbox-label"></text>
+    <br>
+    <input type="checkbox" class="checkbox" style="display: none;"> 
+    <text id="checkbox-label"></text>
+    <br>
+    <input type="checkbox" class="checkbox" style="display: none;"> 
+    <text id="checkbox-label"></text>
+    <br>
+    <input type="checkbox" class="checkbox" style="display: none;"> 
+    <text id="checkbox-label"></text>
+    <br>
+    <input type="checkbox" class="checkbox" style="display: none;"> 
+    <text id="checkbox-label"></text>
+    <br>
+
+
+</div> 
+
+
+<div class="flex-child viz" id="my_dataviz">
+
+<script>
+
+    // set the dimensions and margins of the graph
+    const margin = {top: 80, right: 200, bottom: 20, left: 100},
+      width = 920 - margin.left - margin.right,
+      height = 800 - margin.top - margin.bottom;
+    
+    // append the svg object to the body of the page
+    const svg = d3.select("#my_dataviz")
+    .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .attr("class", "graph-svg-component")
+    .append("g")
+      .attr("transform",
+            `translate(${margin.left},${margin.top})`)
+        .attr("class", "plot");
+
+    // const title = d3.select("#title");
+    
+    // options for checkbox
+    var cities = ["Charlotte, NC", "Los Angeles, CA", "Jacksonville, FL", "Chicago, IL", "Phoeniz, AZ" ]
+    var citiesSelection = ["clt", "cqt", "jax", "mdw", "phx" ]
+    var years = ["Summer 2014", "Fall 2014", "Winter 2015", "Spring 2015", "Summer 2015"]
+    var years_dom = ["summer_2014", "fall_2014", "winter_2015", "spring_2015", "summer_2015"]
+    // function to translate city abbrev to friendly name
+    function translate_city(abbrev) {
+        var ind = citiesSelection.indexOf(abbrev);
+        return cities[ind];
+    }
+
+    function translate_year(full_name) {
+        var ind = years.indexOf(full_name);
+        return years_dom[ind];
+    }
+
+    // Parse the Data
+    d3.csv('data.csv').then( function(df) {
+
+    // DROPDOWN ELEM
+        var graphOptions = ["- Select -", "Compare Cities", "Compare Years & Seasons for a City"]
+        // add options
+        d3.select("#selectButton")
+            .selectAll('myOptions')
+            .data(graphOptions)
+            .enter()
+            .append('option')
+            .text(function (d) { return d; }) // text showed in the menu
+            .attr("value", function (d) { return d; }) // corresponding value returned by the button
+
+        // A function that updates the checkbox options
+        
+    // COLOR SCALE
+        // Color scale 1: for comparing different cities 
+        // hardcoded for now 
+        const color1 = d3.scaleOrdinal()
+        .domain(citiesSelection)
+        .range(["#ffb500", "#00f37c", "#cb77ff", "#62b9ff", "#efff94"])
+
+        // Color scale 2: for comparing different years/record of the same city -- IMPLEMENT LATER
+        const color2 = d3.scaleOrdinal()
+        .domain(years)
+        .range(["#41ffa7", "#ffa531", "#00f9f6", "#ff5be2", "#efff94"])
+
+        var options;
+        var colorScheme;
+        var selectList;
+        var subtitle = d3.select("#subtitle");
+        function updateGraph(selectedGraph) {
+            svg.selectAll("*").remove();
+            subtitle.selectAll("*").remove();
+            // clear selectList --FIX LATER-- 
+            var selButton = d3.select("#selectButton-city")
+            selButton.selectAll("*").remove()
+            // redraw axis 
+            svg.selectAll("myAxis")
+                // For each dimension of the dataset I add a 'g' element:
+                .data(dimensions).enter()
+                .append("g")
+                .attr("class", "axis")
+                .attr("stroke", "white")
+                // I translate this element to its right position on the x axis
+                .attr("transform", function(d) { return `translate(${x(d)})`})
+                // And I build the axis with the call function
+                .each(function(d) {d3.select(this).call(d3.axisLeft().ticks(5).scale(y[d])); })
+                // Add axis title
+                .append("text")
+                .style("text-anchor", "middle")
+                .attr("y", -9)
+                .text(function(d,i) { return dimension_friendly[i]; })
+
+            // reset checkboxes 
+            d3.selectAll('input').property('checked', false);
+            // clear checkbox options 
+            d3.selectAll("#checkbox-label")
+                .text('')
+            d3.select("#selectButton-city") 
+                .attr("style", "display: none")
+            d3.select("#city-select") 
+                .attr("style", "display: none")
+            // reset checkbox selections
+            selectedOptions = [];
+            // Create new options based on selection
+            var checkBoxOptions = '';
+            var prompt = '';
+            if (selectedGraph == "Compare Cities") {
+                checkBoxOptions = cities;
+                prompt = "Select Cities";
+                options = citiesSelection;
+                optionsFriendly = cities;
+                subtitle
+                    .append('h2')
+                    .text('(2014-2015)');
+            }
+            else if (selectedGraph == 'Compare Years & Seasons for a City') {
+                checkBoxOptions = years;
+                prompt = "Select Years & Seasons";
+                options = years;
+                optionsFriendly = ["Summer 2014", "Fall 2014", "Winter 2015", "Spring 2015", "Summer 2015"];
+                selectList = ["-Select-", "Charlotte, NC", "Los Angeles, CA", "Jacksonville, FL", "Chicago, IL", "Phoeniz, AZ" ];
+                d3.select("#city-select")
+                    .attr("style", "display: inline");
+                d3.select("#selectButton-city")
+                    .attr("style", "dislay: inline")
+                    .selectAll('myOptions2')
+                    .data(selectList)
+                    .enter()
+                    .append('option')
+                    .text(function (d) { return d; }) // text showed in the menu
+                    .attr("value", function (d) { return d; }); // corresponding value returned by the button
+            }
+
+            if (options == years) {
+                colorScheme = color2;
+            }
+            else if (options == citiesSelection) {
+                colorScheme = color1;
+            }
+
+            d3.select("#option-prompt")
+                .attr("style", "display: inline")
+                .text(prompt)
+
+            d3.selectAll("input")
+                .data(options)
+                .attr("style", "display: inline")
+                .attr("value", function(d) { return d })
+            d3.selectAll("#checkbox-label")
+                .data(optionsFriendly)
+                .append("p")
+                .text(function(d) { return d })
+                .attr("style", "display: inline-block")
+
+            d3.select("#user-input")
+                .append("br")
+        }
+
+        // When the button is changed, run the updateChart function
+        d3.select("#selectButton").on("change", function(d) {
+            // recover the option that has been chosen
+            var selectedGraph = d3.select(this).property("value")
+            // run the updateChart function with this selected option
+            updateGraph(selectedGraph)
+        })
+
+    
+        // Here I set the list of dimension manually to control the order of axis:
+        dimensions = ["average_min_temp", "average_max_temp", "average_precipitation"]
+        dimension_friendly = ["Average Min Temperature (\u00B0F)", "Average Max Temperature (\u00B0F)", "Average Precipitation (in)"]
+    
+        // For each dimension, I build a linear scale. I store all in a y object
+        const y = {}
+        const testArray = [1, 2, 6, 800, -2]
+        for (i in dimensions) {
+            name = dimensions[i]
+            y[name] = d3.scaleLinear()
+            // .domain( [0,8] )
+            // .domain( d3.extent(testArray) )
+            .domain( d3.extent(df, function(d) { return +d[name]; })  )
+            .range([height, 0])
+        }
+    
+        // Build the X scale -> it find the best position for each Y axis
+        x = d3.scalePoint()
+            .range([0, width])
+            .domain(dimensions);
+    
+        // Highlight the specie that is hovered
+        var highlight = function(event, d){
+            if (options == years) {
+                // first every group turns grey
+                d3.selectAll(".line")
+                .transition().duration(100)
+                .style("stroke", "lightgrey")
+                .style("opacity", "0.2")
+                // Second the hovered specie takes its color
+                d3.selectAll("." + translate_year(d.year_season))
+                .transition().duration(100).ease(d3.easeQuadIn)
+                .style("stroke", colorScheme(d.year_season))
+                .style("opacity", "1")
+            }
+            else if (options == citiesSelection) {
+                // first every group turns grey
+                d3.selectAll(".line")
+                .transition().duration(100)
+                .style("stroke", "lightgrey")
+                .style("opacity", "0.2")
+                // Second the hovered specie takes its color
+                d3.selectAll("." + d.city)
+                .transition().duration(100).ease(d3.easeQuadOut)
+                .style("stroke", colorScheme(d.city))
+                .style("opacity", "1")
+            }
+        }
+    
+        // Unhighlight
+        var doNotHighlight = function(event, d){
+            if (options == years) {
+                d3.selectAll(".line")
+                .transition().duration(100).delay(1000).ease(d3.easeQuadOut)
+                .style("stroke", function(d){ return( colorScheme(d.year_season))} )
+                .style("opacity", "1")
+            }
+            else if (options == citiesSelection) {
+                d3.selectAll(".line")
+                .transition().duration(100).delay(1000).ease(d3.easeQuadOut)
+                .style("stroke", function(d){ return( colorScheme(d.city))} )
+                .style("opacity", "1")
+            }  
+        }
+    
+        // The path function take a row of the csv as input, and return x and y coordinates of the line to draw for this raw.
+        function path(d) {
+            return d3.line()(dimensions.map(function(p) { return [x(p), y[p](d[p])]; }));
+        }
+    
+    // CHECKBOX ELEM/DRAWING LINES
+        // function that updates data based on boxes checked
+        function updateData(selectedOptions) {
+            svg.selectAll("*").remove();
+            // subtitle.selectAll("*").remove();
+            svg.selectAll("myAxis")
+                // For each dimension of the dataset I add a 'g' element:
+                .data(dimensions).enter()
+                .append("g")
+                .attr("class", "axis")
+                .attr("stroke", "white")
+                // I translate this element to its right position on the x axis
+                .attr("transform", function(d) { return `translate(${x(d)})`})
+                // And I build the axis with the call function
+                .each(function(d) {d3.select(this).call(d3.axisLeft().ticks(5).scale(y[d])); })
+                // Add axis title
+                .append("text")
+                .style("text-anchor", "middle")
+                .attr("y", -9)
+                .text(function(d,i) { return dimension_friendly[i]; })
+            // create new data w/ selection
+            var dataFilter;
+            if (options == citiesSelection) {
+                dataFilter = df.filter(function(d,i){ return selectedOptions.indexOf(d.city) >= 0 });
+            }
+            else if (options == years) {
+                dataFilter = df.filter(function(d) { return d.city == selectedCity});
+                dataFilter = dataFilter.filter(function(d,i){ return selectedOptions.indexOf(d.year_season) >= 0 });
+            }
+
+            // CREATE LEGEND
+            // set starts for coord,,, hardcoded for now
+            var cx_start = 650
+            var cy_start = 200
+            // Add one dot in the legend for each name.
+            svg.selectAll("legendDots")
+                .data(selectedOptions)
+                .enter()
+                .append("circle")
+                    .attr("cx", cx_start)
+                    .attr("cy", function(d,i){ return cy_start + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+                    .attr("r", 7)
+                    // .transition().duration(150).ease(d3.easeQuadIn)
+                    .style("fill", function(d){ return colorScheme(d)})
+
+            // Add one dot in the legend for each name.
+            
+            if (options == years) {
+                subtitle.selectAll("*").remove();
+                svg.selectAll("myLegendLabels")
+                .data(selectedOptions)
+                .enter()
+                .append("text")
+                    .attr("class", "legendLabels")
+                    .attr("x", cx_start + 20)
+                    .attr("y", function(d,i){ return cy_start + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+                    .style("fill", function(d){ return colorScheme(d)})
+                    .text(function(d){ return d})
+                    .attr("text-anchor", "left")
+                    .style("alignment-baseline", "middle"); 
+                   // .transition().duration(150);
+            
+                svg.selectAll("myPath")
+                    .data(dataFilter)
+                    .join("path")
+                    .attr("class", function (d) { return "line " + translate_year(d.year_season) } ) // 2 class for each line: 'line' and the group name
+                    .attr("d",  path)
+                    .style("fill", "none" )
+                    .style("stroke", function(d){ return( colorScheme(d.year_season))} )
+                    .style("opacity", 0.5)
+                    .on("mouseover", highlight)
+                    .on("mouseleave", doNotHighlight );
+                subtitle 
+                    .append('h2')
+                    .text(translate_city(selectedCity));
+            }
+            else if (options == citiesSelection) {
+                svg.selectAll("myLegendLabels")
+                .data(selectedOptions)
+                .enter()
+                .append("text")
+                    .attr("class", "legendLabels")
+                    .attr("x", cx_start + 20)
+                    .attr("y", function(d,i){ return cy_start + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
+                    .style("fill", function(d){ return colorScheme(d)})
+                    .text(function(d){ return translate_city(d)})
+                    .attr("text-anchor", "left")
+                    .style("alignment-baseline", "middle");
+            
+                svg.selectAll("myPath")
+                    .data(dataFilter)
+                    .join("path")
+                    .attr("class", function (d) { return "line " + d.city } ) // 2 class for each line: 'line' and the group name
+                    .attr("d",  path)
+                    .style("fill", "none" )
+                    .style("stroke", function(d){ return( colorScheme(d.city))} )
+                    .style("opacity", 0.5)
+                    .on("mouseover", highlight)
+                    .on("mouseleave", doNotHighlight )
+            }
+           
+        }
+
+        // When the button is changed, run the updateCity function
+        var selectedCity;
+        d3.select("#selectButton-city").on("change", function(d) {
+            // recover the option that has been chosen
+            selectedCity = d3.select(this).property("value")
+            if (selectedCity == "Charlotte, NC") {
+                selectedCity = 'clt';
+            }
+            else if (selectedCity == "Los Angeles, CA") {
+                selectedCity = 'cqt';
+            }
+            else if (selectedCity == "Indianapolis, IN") {
+                selectedCity = 'ind';
+            }
+            else if (selectedCity == "Jacksonville, FL") {
+                selectedCity = 'jax';
+            }
+            else if (selectedCity == "Chicago, IL") {
+                selectedCity = 'mdw';
+            }
+            else if (selectedCity ==  "Phoeniz, AZ") {
+                selectedCity = 'phx';
+            }
+            
+        })
+
+        // when selection is made, run updateData function
+        var selectedOptions = [];
+       //  var selectedOptionsFriendly = [];
+        d3.selectAll("input").on('change', function(d) {
+            if(this.checked) {
+                selectedOptions.push(d3.select(this).property("value"))
+            } 
+            else if (!this.checked) {
+                if (selectedOptions.includes(d3.select(this).property("value"))) {
+                    var index = selectedOptions.indexOf(d3.select(this).property("value"));
+                    var x = selectedOptions.splice(index, 1);
+                }
+            }
+            updateData(selectedOptions);
+        });
+       
+         // Draw the axis:
+         svg.selectAll("myAxis")
+            // For each dimension of the dataset I add a 'g' element:
+            .data(dimensions).enter()
+            .append("g")
+            .attr("class", "axis")
+            .attr("stroke", "white")
+            // I translate this element to its right position on the x axis
+            .attr("transform", function(d) { return `translate(${x(d)})`})
+            // And I build the axis with the call function
+            .each(function(d) {d3.select(this).call(d3.axisLeft().ticks(5).scale(y[d])); })
+            // Add axis title
+            .append("text")
+            .style("text-anchor", "middle")
+            .attr("y", -9)
+            .text(function(d,i) { return dimension_friendly[i]; })
+    })
+
+    </script>
+</div>
+</div>
+</body>
