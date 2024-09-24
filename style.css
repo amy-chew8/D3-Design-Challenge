@@ -1,0 +1,66 @@
+body {
+    background-color: #1b1b1b;
+    font-family: 'Raleway', sans-serif;
+}
+
+h1 {
+    color:white;
+    text-align: center;
+}
+p {
+    font-family: 'Raleway', sans-serif;
+    color: white;
+}
+
+h2 {
+    color: white;
+    text-align: center;
+}
+
+select { 
+    margin-bottom: 8%;
+}
+
+.option {
+    stroke: white;
+}
+
+#my_dataviz {
+    font-family: 'Raleway', sans-serif;
+}
+
+.graph-svg-component {
+    background-color: #111111;
+}
+
+.domain {
+    stroke: white;
+}
+
+.axis {
+    font-family: 'Raleway', sans-serif;
+} 
+
+
+#checkbox-label {
+    font-family: 'Raleway', sans-serif;
+}
+
+/* .grid-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+} */
+
+.flex-parent {
+    display: flex;
+    width: 50%;
+  }
+  
+.flex-child {
+    flex: 1;
+    /* margin: 5%; */
+}
+
+.flex-child:first-child {
+    margin-right: 10%;
+}
